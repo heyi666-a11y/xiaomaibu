@@ -558,6 +558,17 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; white
   display: flex; align-items: center; gap: 14px;
   box-shadow: var(--shadow-1);
 }
+.sk-back {
+  flex: 0 0 auto;
+  display: inline-flex; align-items: center;
+  padding: 7px 13px 7px 10px;
+  border: 1px solid rgba(255, 255, 255, .28); border-radius: 999px;
+  background: rgba(255, 255, 255, .14); color: #fff;
+  font-size: 13px; line-height: 1; cursor: pointer;
+  transition: background .18s ease, transform .12s ease;
+}
+.sk-back:hover { background: rgba(255, 255, 255, .3); }
+.sk-back:active { transform: scale(.94); }
 .seckill-hero h2 { font-size: 18px; letter-spacing: .02em; }
 .seckill-hero-sub { font-size: 12px; opacity: .72; margin-top: 3px; }
 .seckill-countdown {
@@ -652,6 +663,7 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; white
 
 @media (max-width: 560px) {
   .seckill-hero { padding: 14px 16px; }
+  .sk-back { padding: 6px 10px 6px 8px; font-size: 12px; }
   .seckill-countdown { font-size: 13px; padding: 6px 10px; }
   .sk-img { width: 76px; height: 76px; }
   .sk-price { font-size: 17px; }

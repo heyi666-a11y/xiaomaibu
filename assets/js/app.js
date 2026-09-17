@@ -265,6 +265,8 @@ function startSeckillTicker() {
 document.addEventListener('click', e => {
   /* 首页秒杀横条：点击任意卡片进入秒杀页 */
   if (e.target.closest('[data-hs-go]')) { switchTab('seckill'); return; }
+  /* 秒杀页顶部返回键：回到选购页 */
+  if (e.target.closest('[data-sk-back]')) { switchTab('shop'); return; }
   const btn = e.target.closest('[data-sk-add]');
   if (!btn) return;
   const sk = state.seckills.find(s => String(s.id) === btn.dataset.skAdd);
