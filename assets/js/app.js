@@ -158,6 +158,7 @@ async function loadSeckills() {
 }
 
 function renderSeckill() {
+  renderHomeSeckill();
   const list = state.seckills.filter(s => !s.sold_out);
   const hero = document.getElementById('seckillCountdown');
   if (!state.seckills.length) {
@@ -207,6 +208,31 @@ function renderSeckill() {
     : `<div class="empty"><strong>本轮已抢完</strong>等下一波秒杀再来吧</div>`;
 }
 
+/* 首页秒杀横条：有在售活动才显示，横滑卡片，点击进入秒杀页 */
+function renderHomeSeckill() {
+  const box = document.getElementById('homeSeckill');
+  if (!box) return;
+  const list = state.seckills.filter(s => !s.sold_out);
+  if (!list.length) { box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  document.getElementById('hsCountdown').textContent = earliestCountdown(list);
+  document.getElementById('hsList').innerHTML = list.map(sk => {
+    const off = sk.origin_price > 0 && Number(sk.seckill_price) < Number(sk.origin_price)
+      ? Math.round((Number(sk.seckill_price) / Number(sk.origin_price)) * 100) / 10
+      : 0;
+    const pct = Math.min(100, Number(sk.sold_percent) || 0);
+    const out = Number(sk.stock_bottles) <= 0 || sk.left_show <= 0;
+    return `
+    <div class="hs-card${out ? ' is-out' : ''}" data-hs-go>
+      <img src="${productImage(sk)}" alt="${escapeHtml(sk.name)}" loading="lazy" onerror="imgFallback(this)">
+      <div class="hs-name">${escapeHtml(sk.name)}</div>
+      <div class="hs-price">${yuan(sk.seckill_price)}${off > 0 ? `<em>${off}折</em>` : ''}</div>
+      <div class="hs-bar"><i style="width:${pct}%"></i></div>
+      <div class="hs-flag">${out ? '已抢完' : '马上抢'}</div>
+    </div>`;
+  }).join('');
+}
+
 function earliestCountdown(sks) {
   const ends = sks.map(s => s.end_at ? new Date(s.end_at).getTime() : Infinity);
   if (!ends.length) return '--:--:--';
@@ -219,18 +245,26 @@ function earliestCountdown(sks) {
 function startSeckillTicker() {
   if (startSeckillTicker._t) clearInterval(startSeckillTicker._t);
   startSeckillTicker._t = setInterval(() => {
-    if (state.tab !== 'seckill') return;
     const sks = state.seckills;
     if (!sks.length) return;
-    document.getElementById('seckillCountdown').textContent = earliestCountdown(sks);
-    document.querySelectorAll('[data-sk-end]').forEach(el => {
-      el.textContent = countdownText(el.dataset.skEnd || null).text;
-    });
+    if (state.tab === 'seckill') {
+      document.getElementById('seckillCountdown').textContent = earliestCountdown(sks);
+      document.querySelectorAll('[data-sk-end]').forEach(el => {
+        el.textContent = countdownText(el.dataset.skEnd || null).text;
+      });
+    } else {
+      /* 首页横条倒计时也保持走秒 */
+      const hs = document.getElementById('hsCountdown');
+      const active = sks.filter(s => !s.sold_out);
+      if (hs && active.length) hs.textContent = earliestCountdown(active);
+    }
     if (sks.some(s => s.end_at && new Date(s.end_at).getTime() <= Date.now())) loadSeckills();
   }, 1000);
 }
 
 document.addEventListener('click', e => {
+  /* 首页秒杀横条：点击任意卡片进入秒杀页 */
+  if (e.target.closest('[data-hs-go]')) { switchTab('seckill'); return; }
   const btn = e.target.closest('[data-sk-add]');
   if (!btn) return;
   const sk = state.seckills.find(s => String(s.id) === btn.dataset.skAdd);

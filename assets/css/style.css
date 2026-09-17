@@ -604,6 +604,52 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; white
 .sk-progress i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #e5533d, #c0392b); transition: width .3s; }
 .sk-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
 
+/* ---- 首页秒杀横条 ---- */
+.home-seckill {
+  margin: 16px 0 18px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1d2127, #2b1f22 60%, #3a2320);
+  padding: 14px 0 12px;
+  overflow: hidden;
+}
+.hs-head { display: flex; align-items: center; gap: 10px; padding: 0 16px 10px; cursor: pointer; }
+.hs-title { font-size: 15px; font-weight: 700; color: #ffe9d6; letter-spacing: .02em; }
+.hs-countdown {
+  font-size: 11.5px; font-weight: 600; color: #ffd9c2;
+  background: rgba(255,255,255,.12); border-radius: 999px; padding: 3px 9px;
+}
+.hs-more { margin-left: auto; font-size: 12px; color: rgba(255,233,214,.65); }
+.hs-scroll { display: flex; gap: 10px; overflow-x: auto; padding: 2px 16px 4px; scroll-snap-type: x mandatory; }
+.hs-scroll::-webkit-scrollbar { display: none; }
+.hs-card {
+  flex: 0 0 118px; scroll-snap-align: start;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.09);
+  border-radius: 12px; padding: 8px;
+  display: flex; flex-direction: column; gap: 5px;
+  cursor: pointer; transition: transform .15s, background .15s;
+}
+.hs-card:hover { transform: translateY(-2px); background: rgba(255,255,255,.11); }
+.hs-card img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border-radius: 9px; background: #fff; }
+.hs-card.is-out { opacity: .55; }
+.hs-name { font-size: 12px; font-weight: 600; color: #f4f1ec; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hs-price { font-size: 14px; font-weight: 700; color: #ff7a45; display: flex; align-items: baseline; gap: 5px; }
+.hs-price em {
+  font-style: normal; font-size: 10px; font-weight: 700; color: #fff;
+  background: linear-gradient(135deg, #ff7a45, #e5533d);
+  padding: 1px 5px; border-radius: 5px;
+}
+.hs-bar { height: 4px; border-radius: 999px; background: rgba(255,255,255,.15); overflow: hidden; }
+.hs-bar i { display: block; height: 100%; background: linear-gradient(90deg, #ffb199, #ff5e3a); }
+.hs-flag {
+  font-size: 10.5px; font-weight: 700; color: #ffd9c2; text-align: center;
+  background: rgba(255,122,69,.16); border-radius: 7px; padding: 3px 0;
+}
+@media (max-width: 560px) {
+  .home-seckill { margin: 12px 0 14px; }
+  .hs-card { flex: 0 0 104px; }
+}
+
 @media (max-width: 560px) {
   .seckill-hero { padding: 14px 16px; }
   .seckill-countdown { font-size: 13px; padding: 6px 10px; }
