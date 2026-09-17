@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f6f4">
+<title>印相便利店 · 在线选购</title>
+<meta name="description" content="印相便利店在线选购：饮料整箱更划算，手机号注册即可下单。">
+<link rel="stylesheet" href="assets/css/style.css?v=1.1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23111214'/><text x='16' y='22' font-size='16' font-family='sans-serif' font-weight='700' fill='%23fff' text-anchor='middle'>印</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark">印相</div>
+    <div class="brand-text">
+      <div class="brand-name" id="shopName">印相便利店</div>
+      <div class="brand-sub" id="shopHours">线上选购 · 送货到门</div>
+    </div>
+  </div>
+  <div class="topbar-spacer"></div>
+  <input class="input hidden" id="searchInput" placeholder="搜索商品" style="max-width:220px" autocomplete="off">
+  <button class="btn btn-icon" id="btnOpenCart" title="购物车" style="position:relative">
+    <span style="font-size:16px">🛒</span>
+    <span id="cartDot" class="hidden" style="position:absolute;top:-2px;right:-2px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--accent);color:#fff;font-size:10px;line-height:17px;font-weight:600"></span>
+  </button>
+</header>
+
+<main class="page">
+  <div class="wrap">
+
+    <!-- ============================ 商品 ============================ -->
+    <section id="viewShop">
+      <div class="notice" id="noticeBar">
+        <span>🔔</span><span id="noticeText">欢迎光临印相便利店</span>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>店内在售</h2>
+          <span class="muted" id="productCount"></span>
+        </div>
+        <div class="chips" id="categoryChips" style="margin-bottom:14px"></div>
+        <div class="grid" id="productGrid"></div>
+      </div>
+    </section>
+
+    <!-- ============================ 订单 ============================ -->
+    <section id="viewOrders" class="hidden">
+      <div class="section-head" style="margin-top:20px">
+        <h2>我的订单</h2>
+        <span class="muted" id="orderHint"></span>
+      </div>
+      <div id="orderList"></div>
+    </section>
+
+    <!-- ============================= 我的 ============================= -->
+    <section id="viewMe" class="hidden">
+      <div class="card profile-head" style="margin-top:20px">
+        <div class="avatar" id="meAvatar">游</div>
+        <div style="min-width:0">
+          <div style="font-size:16px;font-weight:600" id="meName">未登录</div>
+          <div class="muted small" id="mePhone">登录后可下单与查看订单</div>
+        </div>
+      </div>
+
+      <div class="card menu-list" style="margin-top:14px">
+        <div class="menu-row" data-me="profile">
+          <span class="label">收货信息</span><span class="value" id="meAddress">未填写</span><span class="arrow">›</span>
+        </div>
+        <div class="menu-row" data-me="invite">
+          <span class="label">我的邀请码</span><span class="value" id="meInvite">-</span><span class="arrow">›</span>
+        </div>
+        <div class="menu-row" data-me="password">
+          <span class="label">修改密码</span><span class="arrow">›</span>
+        </div>
+      </div>
+
+      <div class="card menu-list" style="margin-top:14px">
+        <div class="menu-row" data-me="orders">
+          <span class="label">全部订单</span><span class="value" id="meOrderCount">0 单</span><span class="arrow">›</span>
+        </div>
+        <div class="menu-row" data-me="contact">
+          <span class="label">联系商家</span><span class="value" id="meContact">-</span><span class="arrow">›</span>
+        </div>
+      </div>
+
+      <div style="margin-top:16px">
+        <button class="btn btn-block" id="btnLogout">退出登录</button>
+        <p class="hint center" style="margin-top:14px">商家入口：<a href="admin.html" style="text-decoration:underline">进入后台</a></p>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- 购物车浮条 -->
+<div class="cartbar hidden" id="cartBar">
+  <div class="cartbar-inner">
+    <div>
+      <div class="cartbar-sub" id="cartBarSub">共 0 件</div>
+      <div class="cartbar-total" id="cartBarTotal">¥0.00</div>
+    </div>
+    <div style="flex:1"></div>
+    <button class="btn btn-accent" id="btnCheckout">去结算</button>
+  </div>
+</div>
+
+<!-- 底部标签栏 -->
+<nav class="tabbar" id="tabBar">
+  <button data-tab="shop" class="active"><span class="ico">🛍️</span>选购</button>
+  <button data-tab="orders"><span class="ico">📦</span>订单</button>
+  <button data-tab="me"><span class="ico">👤</span>我的</button>
+</nav>
+
+<div id="modalHost"></div>
+<div id="drawerHost"></div>
+<div class="toast-host" id="toastHost"></div>
+
+<script src="assets/js/api.js?v=1.1"></script>
+<script src="assets/js/app.js?v=1.1"></script>
+</body>
+</html>

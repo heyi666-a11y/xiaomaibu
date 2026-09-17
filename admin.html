@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f6f6f4">
+<title>印相便利店 · 商家后台</title>
+<link rel="stylesheet" href="assets/css/style.css?v=1.1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23111214'/><text x='16' y='22' font-size='16' font-family='sans-serif' font-weight='700' fill='%23fff' text-anchor='middle'>商</text></svg>">
+</head>
+<body>
+
+<!-- ============================ 登录屏 ============================ -->
+<div id="loginScreen" class="auth-wrap">
+  <div class="card auth-card">
+    <div class="auth-logo">
+      <div class="brand-mark">印相</div>
+      <div>
+        <div style="font-size:17px;font-weight:650">印相便利店 · 商家后台</div>
+        <div class="muted small">YXLS 商家管理系统</div>
+      </div>
+    </div>
+    <div class="field"><label>管理员手机号</label><input class="input" id="lgPhone" inputmode="numeric" maxlength="11" placeholder="11 位手机号"></div>
+    <div class="field"><label>密码</label><input class="input" id="lgPwd" type="password" placeholder="登录密码"></div>
+    <button class="btn btn-primary btn-block" id="lgBtn" style="margin-top:6px">登录后台</button>
+    <p class="hint center" style="margin-top:16px">默认管理员账号见数据库初始化脚本，登录后请立即修改密码</p>
+    <p class="hint center"><a href="index.html" style="text-decoration:underline">← 返回买家端</a></p>
+  </div>
+</div>
+
+<!-- ============================ 后台主体 ============================ -->
+<div id="adminShell" class="admin-shell hidden">
+
+  <aside class="admin-side">
+    <div class="admin-side-head">
+      <div class="brand-mark">印相</div>
+      <div class="admin-side-info">
+        <div style="font-size:15px;font-weight:650">商家后台</div>
+        <div class="muted small" id="sideUser">-</div>
+      </div>
+    </div>
+    <nav class="admin-nav" id="adminNav">
+      <button data-view="overview" class="active">📊 经营概览</button>
+      <button data-view="orders">📦 订单管理</button>
+      <button data-view="products">🥤 商品管理</button>
+      <button data-view="invites">🎟️ 邀请码</button>
+      <button data-view="customers">👥 客户管理</button>
+      <button data-view="settings">⚙️ 店铺设置</button>
+    </nav>
+    <div class="admin-side-foot">
+      <button class="btn btn-block btn-sm" id="btnToShop">查看买家端</button>
+      <button class="btn btn-block btn-sm" id="btnAdminLogout" style="margin-top:8px">退出登录</button>
+    </div>
+  </aside>
+
+  <div class="admin-main">
+    <header class="admin-head">
+      <h1 id="viewTitle">经营概览</h1>
+      <button class="btn btn-sm" id="btnRefresh">刷新</button>
+      <button class="btn btn-sm btn-primary hidden" id="btnPrimary">新增</button>
+    </header>
+    <div class="admin-body" id="adminBody"></div>
+  </div>
+
+</div>
+
+<div id="modalHost"></div>
+<div id="drawerHost"></div>
+<div class="toast-host" id="toastHost"></div>
+
+<script src="assets/js/api.js?v=1.1"></script>
+<script src="assets/js/admin.js?v=1.1"></script>
+</body>
+</html>
