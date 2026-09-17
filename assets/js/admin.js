@@ -20,7 +20,8 @@ const A = {
   orderFilter: '',
   orderKeyword: '',
   custKeyword: '',
-  prodKeyword: ''
+  prodKeyword: '',
+  seckills: []
 };
 
 /* 统一调用：自动带上管理员 token，并处理登录失效 */
@@ -71,15 +72,16 @@ async function doLogin() {
 /* --------------------------------------------------------------- 路由 */
 const VIEW_TITLE = {
   overview: '经营概览', orders: '订单管理', products: '商品管理',
-  invites: '邀请码', customers: '客户管理', settings: '店铺设置'
+  seckills: '秒杀活动', invites: '邀请码', customers: '客户管理', settings: '店铺设置'
 };
 
 function go(view) {
   A.view = view;
   document.getElementById('viewTitle').textContent = VIEW_TITLE[view] || '商家后台';
   document.querySelectorAll('#adminNav button').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-  document.getElementById('btnPrimary').classList.toggle('hidden', !['products', 'invites'].includes(view));
-  document.getElementById('btnPrimary').textContent = view === 'invites' ? '新增邀请码' : '新增商品';
+  document.getElementById('btnPrimary').classList.toggle('hidden', !['products', 'invites', 'seckills'].includes(view));
+  document.getElementById('btnPrimary').textContent =
+    view === 'invites' ? '新增邀请码' : view === 'seckills' ? '新增秒杀' : '新增商品';
   render();
   window.scrollTo(0, 0);
 }
@@ -91,6 +93,7 @@ async function render() {
     if (A.view === 'overview') await viewOverview(body);
     else if (A.view === 'orders') await viewOrders(body);
     else if (A.view === 'products') await viewProducts(body);
+    else if (A.view === 'seckills') await viewSeckills(body);
     else if (A.view === 'invites') await viewInvites(body);
     else if (A.view === 'customers') await viewCustomers(body);
     else if (A.view === 'settings') await viewSettings(body);
@@ -408,6 +411,203 @@ document.addEventListener('click', async e => {
       title: '新增商品', large: true, body: productForm(null),
       foot: `<button class="btn" data-close>取消</button><button class="btn btn-primary" id="fSave">保存</button>`,
       onMount: (el, close) => bindProductForm(el, close, null)
+    });
+  }
+});
+
+/* --------------------------------------------------------------- 秒杀活动 */
+function skStatusBadge(k) {
+  if (!k.is_active) return '<span class="badge">已停用</span>';
+  if (k.end_at && new Date(k.end_at) < new Date()) return '<span class="badge">已结束</span>';
+  if (k.start_at && new Date(k.start_at) > new Date()) return '<span class="badge badge-pending">未开始</span>';
+  if (k.sold_out) return '<span class="badge badge-cancelled">已抢完</span>';
+  return '<span class="badge badge-completed">进行中</span>';
+}
+
+/* ISO -> datetime-local 控件用的本地时间串 */
+function toLocalInput(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+async function viewSeckills(body) {
+  const [rs, rp] = await Promise.all([
+    adminRpc('yxls_admin_seckills'),
+    adminRpc('yxls_admin_products')
+  ]);
+  A.seckills = rs.data || [];
+  A.products = rp.data || [];
+
+  body.innerHTML = `
+    <div class="toolbar">
+      <span class="muted small">实际可抢名额 = min(实际数量, 对外数量) − 已抢；前台只按「对外数量」口径展示限量与剩余。</span>
+    </div>
+    <div class="card table-wrap">
+      <table class="data">
+        <thead><tr>
+          <th>商品</th><th>活动</th><th>秒杀价</th>
+          <th class="num">实际/对外</th><th class="num">已抢/名额</th>
+          <th>起止时间</th><th>状态</th><th>操作</th>
+        </tr></thead>
+        <tbody>
+          ${A.seckills.map(k => `
+            <tr>
+              <td>
+                <div style="display:flex;align-items:center;gap:10px">
+                  <img class="thumb-sm" src="${productImage(k)}" onerror="imgFallback(this)" alt="">
+                  <div style="min-width:0">
+                    <div style="font-weight:550">${escapeHtml(k.name)}</div>
+                    <div class="muted small">${escapeHtml(k.spec || '')} · 原${k.unit === 'box' ? '箱' : '瓶'}价 ${yuan(k.origin_price)}${k.product_active ? '' : ' · <b style="color:var(--danger)">已下架</b>'}</div>
+                  </div>
+                </div>
+              </td>
+              <td>${escapeHtml(k.title || '-')}</td>
+              <td class="num" style="color:var(--danger);font-weight:650">${yuan(k.seckill_price)}</td>
+              <td class="num">${k.stock_real} / ${k.stock_show}</td>
+              <td class="num">${k.sold_count} / ${k.quota}</td>
+              <td class="muted small">${k.start_at ? fmtTime(k.start_at) : '立即'}
+                <br>→ ${k.end_at ? fmtTime(k.end_at) : '长期'}</td>
+              <td>${skStatusBadge(k)}</td>
+              <td class="nowrap">
+                <button class="btn btn-sm" data-skedit="${k.id}">编辑</button>
+                <button class="btn btn-sm btn-ghost" data-sktoggle="${k.id}">${k.is_active ? '停用' : '启用'}</button>
+                <button class="btn btn-sm btn-ghost" data-skdel="${k.id}" style="color:var(--danger)">删除</button>
+              </td>
+            </tr>`).join('') || '<tr><td colspan="8" class="muted center" style="padding:40px">还没有秒杀活动，点右上角「新增秒杀」创建</td></tr>'}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function seckillForm(k) {
+  k = k || {};
+  return `
+    <div class="field"><label>秒杀商品 *（仅列在售商品）</label>
+      <select class="select" id="sProduct">
+        <option value="">请选择商品</option>
+        ${A.products.filter(p => p.is_active).map(p =>
+          `<option value="${p.id}" ${k.product_id === p.id ? 'selected' : ''}>${escapeHtml(p.name)}（${escapeHtml(p.spec || '')} · ${p.bottle_count}瓶/箱 · 库存 ${p.stock_bottles} 瓶）</option>`
+        ).join('')}
+        ${A.products.filter(p => !p.is_active && k.product_id === p.id).map(p =>
+          `<option value="${p.id}" selected>${escapeHtml(p.name)}（已下架商品，当前活动）</option>`
+        ).join('')}
+      </select>
+    </div>
+    <div class="field"><label>活动标题（前台展示，留空显示商品名）</label>
+      <input class="input" id="sTitle" value="${escapeHtml(k.title || '')}" maxlength="30" placeholder="如：周末特惠 · 整箱立减"></div>
+    <div class="field-row">
+      <div class="field"><label>秒杀单位</label>
+        <select class="select" id="sUnit">
+          <option value="bottle" ${k.unit !== 'box' ? 'selected' : ''}>单瓶</option>
+          <option value="box" ${k.unit === 'box' ? 'selected' : ''}>整箱</option>
+        </select></div>
+      <div class="field"><label>秒杀价（元）*</label>
+        <input class="input" id="sPrice" type="number" step="0.01" min="0" value="${k.seckill_price ?? ''}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>实际秒杀数量 *（真正能卖出的上限）</label>
+        <input class="input" id="sReal" type="number" min="1" value="${k.stock_real ?? ''}"></div>
+      <div class="field"><label>对外秒杀数量 *（前台展示的「限量」）</label>
+        <input class="input" id="sShow" type="number" min="1" value="${k.stock_show ?? ''}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>开始时间（留空 = 立即开始）</label>
+        <input class="input" id="sStart" type="datetime-local" value="${toLocalInput(k.start_at)}"></div>
+      <div class="field"><label>结束时间（留空 = 长期有效）</label>
+        <input class="input" id="sEnd" type="datetime-local" value="${toLocalInput(k.end_at)}"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>排序（越小越前）</label>
+        <input class="input" id="sSort" type="number" value="${k.sort_order ?? 0}"></div>
+      <div class="field"><label>状态</label>
+        <select class="select" id="sActive">
+          <option value="true" ${k.is_active !== false ? 'selected' : ''}>启用</option>
+          <option value="false" ${k.is_active === false ? 'selected' : ''}>停用</option>
+        </select></div>
+    </div>
+    ${k.id ? `
+    <div class="field"><label>重置已抢数量（当前已抢 ${k.sold_count || 0}）</label>
+      <select class="select" id="sReset">
+        <option value="false">保留当前已抢</option>
+        <option value="true">清零重来（下一轮活动用）</option>
+      </select></div>` : ''}
+    <p class="hint">提示：秒杀数量不要超过商品库存；买家抢完后前台自动显示「已抢完」。</p>`;
+}
+
+function bindSeckillForm(el, close, editing) {
+  const $ = id => el.querySelector('#' + id);
+  el.querySelector('#sSave').onclick = async () => {
+    const data = {
+      id: editing ? editing.id : '',
+      product_id: $('sProduct').value,
+      title: $('sTitle').value.trim(),
+      unit: $('sUnit').value,
+      seckill_price: Number($('sPrice').value || 0),
+      stock_real: Number($('sReal').value || 0),
+      stock_show: Number($('sShow').value || 0),
+      /* datetime-local 无时区，门店在 +08:00，拼上偏移让数据库存对时刻 */
+      start_at: $('sStart').value ? $('sStart').value + ':00+08:00' : '',
+      end_at: $('sEnd').value ? $('sEnd').value + ':00+08:00' : '',
+      sort_order: Number($('sSort').value || 0),
+      is_active: $('sActive').value === 'true'
+    };
+    if (editing) data.reset_sold = $('sReset').value === 'true';
+
+    if (!data.product_id) { toast('请选择秒杀商品', 'err'); return; }
+    if (!editing && data.stock_real <= 0) { toast('实际秒杀数量必须大于 0', 'err'); return; }
+    if (!editing && data.stock_show <= 0) { toast('对外秒杀数量必须大于 0', 'err'); return; }
+    if (data.seckill_price <= 0) { toast('请填写大于 0 的秒杀价', 'err'); return; }
+    if (data.start_at && data.end_at && data.start_at >= data.end_at) { toast('结束时间必须晚于开始时间', 'err'); return; }
+
+    try {
+      const r = await adminRpc('yxls_admin_seckill_save', { p_data: data });
+      if (!r.ok) throw new Error(r.msg);
+      close(); toast('已保存', 'ok'); render();
+    } catch (err) { toast(err.message, 'err'); }
+  };
+}
+
+document.addEventListener('click', async e => {
+  const edit = e.target.closest('[data-skedit]');
+  const toggle = e.target.closest('[data-sktoggle]');
+  const del = e.target.closest('[data-skdel]');
+  const add = e.target.closest('#btnPrimary');
+
+  if (edit) {
+    const k = A.seckills.find(x => String(x.id) === edit.dataset.skedit);
+    if (!k) return;
+    openModal({
+      title: '编辑秒杀活动', large: true, body: seckillForm(k),
+      foot: `<button class="btn" data-close>取消</button><button class="btn btn-primary" id="sSave">保存</button>`,
+      onMount: (el, close) => bindSeckillForm(el, close, k)
+    });
+  } else if (toggle) {
+    const k = A.seckills.find(x => String(x.id) === toggle.dataset.sktoggle);
+    if (!k) return;
+    try {
+      /* 更新分支会整体覆盖 unit，这里必须带上，避免停用/启用时把单位改回单瓶 */
+      const r = await adminRpc('yxls_admin_seckill_save', {
+        p_data: { id: k.id, unit: k.unit, is_active: !k.is_active }
+      });
+      if (!r.ok) throw new Error(r.msg);
+      toast(k.is_active ? '已停用' : '已启用', 'ok');
+      render();
+    } catch (err) { toast(err.message, 'err'); }
+  } else if (del) {
+    if (!confirm('删除后前台立即下线该秒杀；若已有成交记录会转为停用。确定吗？')) return;
+    try {
+      const r = await adminRpc('yxls_admin_seckill_delete', { p_id: Number(del.dataset.skdel) });
+      if (!r.ok) throw new Error(r.msg);
+      toast(r.msg || '已删除', 'ok');
+      render();
+    } catch (err) { toast(err.message, 'err'); }
+  } else if (add && A.view === 'seckills') {
+    openModal({
+      title: '新增秒杀活动', large: true, body: seckillForm(null),
+      foot: `<button class="btn" data-close>取消</button><button class="btn btn-primary" id="sSave">保存</button>`,
+      onMount: (el, close) => bindSeckillForm(el, close, null)
     });
   }
 });

@@ -547,3 +547,66 @@ table.data td.num { text-align: right; font-variant-numeric: tabular-nums; white
   .product-name { min-height: 42px; }
   .toast-host { bottom: 96px; }
 }
+
+/* ---------------------------------------------------------------- 秒杀专区 */
+.seckill-hero {
+  margin-top: 18px;
+  padding: 18px 20px;
+  border-radius: var(--radius);
+  background: linear-gradient(120deg, #1b1c1f 0%, #2c2e33 60%, #3a3d44 100%);
+  color: #fff;
+  display: flex; align-items: center; gap: 14px;
+  box-shadow: var(--shadow-1);
+}
+.seckill-hero h2 { font-size: 18px; letter-spacing: .02em; }
+.seckill-hero-sub { font-size: 12px; opacity: .72; margin-top: 3px; }
+.seckill-countdown {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650; font-size: 15px;
+  background: rgba(255, 255, 255, .12);
+  border: 1px solid rgba(255, 255, 255, .18);
+  padding: 7px 12px; border-radius: 999px;
+  white-space: nowrap;
+}
+.seckill-list { display: grid; gap: 12px; margin-top: 14px; }
+.sk-card {
+  display: flex; gap: 14px;
+  padding: 14px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-1);
+}
+.sk-img {
+  width: 92px; height: 92px; flex: none;
+  border-radius: var(--radius-sm); object-fit: cover; background: #f2f1ee;
+}
+.sk-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.sk-title { font-weight: 600; font-size: 14.5px; display: flex; align-items: center; gap: 7px; min-width: 0; }
+.sk-badge {
+  flex: none;
+  font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+  color: #fff; background: linear-gradient(120deg, #e5533d, #c0392b);
+  padding: 2px 7px; border-radius: 6px;
+}
+.sk-price-row { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.sk-price { color: var(--danger); font-size: 19px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.sk-off {
+  font-size: 10.5px; font-weight: 700;
+  color: var(--danger); background: var(--danger-soft);
+  padding: 2px 6px; border-radius: 6px;
+}
+.sk-progress {
+  height: 6px; border-radius: 999px;
+  background: var(--warn-soft); overflow: hidden;
+}
+.sk-progress i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #e5533d, #c0392b); transition: width .3s; }
+.sk-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
+
+@media (max-width: 560px) {
+  .seckill-hero { padding: 14px 16px; }
+  .seckill-countdown { font-size: 13px; padding: 6px 10px; }
+  .sk-img { width: 76px; height: 76px; }
+  .sk-price { font-size: 17px; }
+}

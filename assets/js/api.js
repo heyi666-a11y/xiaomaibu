@@ -65,20 +65,30 @@ const Cart = {
     localStorage.setItem(this.key, JSON.stringify(items));
     window.dispatchEvent(new CustomEvent('yxls:cart'));
   },
-  add(product, unit, qty = 1) {
+  /* seckill 传入秒杀活动对象时，该条目按秒杀价锁定单位与单价 */
+  add(product, unit, qty = 1, seckill = null) {
     const items = this.read();
-    const hit = items.find(i => i.product_id === product.id && i.unit === unit);
-    if (hit) hit.qty += qty;
-    else items.push({
-      product_id: product.id,
-      barcode: product.barcode || '',
-      name: product.name,
-      spec: product.spec,
-      unit,
-      qty,
-      price: Number(unit === 'box' ? product.box_price : product.bottle_price),
-      bottle_count: product.bottle_count
-    });
+    const sid = seckill ? Number(seckill.id) : null;
+    const hit = items.find(i =>
+      i.product_id === product.id && i.unit === unit && (i.seckill_id || null) === sid);
+    if (hit) {
+      hit.qty += qty;
+    } else {
+      items.push({
+        product_id: product.id,
+        barcode: product.barcode || '',
+        name: product.name,
+        spec: product.spec,
+        unit,
+        qty,
+        price: sid
+          ? Number(seckill.seckill_price)
+          : Number(unit === 'box' ? product.box_price : product.bottle_price),
+        origin_price: Number(unit === 'box' ? product.box_price : product.bottle_price),
+        bottle_count: product.bottle_count,
+        seckill_id: sid
+      });
+    }
     this.write(items);
   },
   setQty(index, qty) {
@@ -91,7 +101,7 @@ const Cart = {
   setUnit(index, unit) {
     const items = this.read();
     const it = items[index];
-    if (!it) return;
+    if (!it || it.seckill_id) return;   // 秒杀条目单位由活动决定，不可切换
     const p = window.__yxlsProducts || [];
     const prod = p.find(x => x.id === it.product_id);
     if (!prod) return;
@@ -124,6 +134,23 @@ function fmtTime(iso, withTime = true) {
   const p = n => String(n).padStart(2, '0');
   const day = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   return withTime ? `${day} ${p(d.getHours())}:${p(d.getMinutes())}` : day;
+}
+
+/* 秒杀倒计时：返回 {text, ended} */
+function countdownText(endIso) {
+  if (!endIso) return { text: '长期有效', ended: false };
+  const ms = new Date(endIso).getTime() - Date.now();
+  if (ms <= 0) return { text: '已结束', ended: true };
+  const total = Math.floor(ms / 1000);
+  const d = Math.floor(total / 86400);
+  const h = Math.floor((total % 86400) / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  const p = n => String(n).padStart(2, '0');
+  return {
+    text: d > 0 ? `${d}天 ${p(h)}:${p(m)}:${p(s)}` : `${p(h)}:${p(m)}:${p(s)}`,
+    ended: false
+  };
 }
 
 const ORDER_STATUS = {
@@ -220,8 +247,21 @@ const YXLS_IMAGE_PROMPTS = {
   '6921168593521': 'commercial product photo of a 2.1 litre large bottle of natural mineral water, transparent bottle, studio lighting'
 };
 
+/* 已抓取真实图并落到本地 assets/img/<条码>.jpg 的商品条码；未在列的走 AI 生成占位 */
+const YXLS_LOCAL_IMG = new Set([
+  '6921168500956', '6921168500970', '6921168504015', '6921168504022',
+  '6921168509256', '6921168520015', '6921168550128', '6921168550142',
+  '6921168558032', '6921168558049', '6921168563074', '6921168563869',
+  '6921168563883', '6921168564330', '6921168564354', '6921168593521',
+  '6921168593552', '6921168593569', '6921168596348', '6921168598427',
+  '6921168598649'
+]);
+
 function productImage(p) {
   if (p && p.image_url) return p.image_url;
+  if (p && p.barcode && YXLS_LOCAL_IMG.has(p.barcode)) {
+    return 'assets/img/' + p.barcode + '.jpg';
+  }
   const prompt = (p && YXLS_IMAGE_PROMPTS[p.barcode])
     || `commercial product photo of bottled beverage ${p ? p.name : ''}, clean white background, studio lighting, centered`;
   return 'https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image'
@@ -243,6 +283,7 @@ window.Cart = Cart;
 window.yuan = yuan;
 window.escapeHtml = escapeHtml;
 window.fmtTime = fmtTime;
+window.countdownText = countdownText;
 window.statusInfo = statusInfo;
 window.unitText = unitText;
 window.toast = toast;

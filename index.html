@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#f6f6f4">
 <title>印相便利店 · 在线选购</title>
 <meta name="description" content="印相便利店在线选购：饮料整箱更划算，手机号注册即可下单。">
-<link rel="stylesheet" href="assets/css/style.css?v=1.1">
+<link rel="stylesheet" href="assets/css/style.css?v=1.2">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23111214'/><text x='16' y='22' font-size='16' font-family='sans-serif' font-weight='700' fill='%23fff' text-anchor='middle'>印</text></svg>">
 </head>
 <body>
@@ -44,6 +44,18 @@
         <div class="chips" id="categoryChips" style="margin-bottom:14px"></div>
         <div class="grid" id="productGrid"></div>
       </div>
+    </section>
+
+    <!-- ============================ 秒杀 ============================ -->
+    <section id="viewSeckill" class="hidden">
+      <div class="seckill-hero">
+        <div>
+          <h2 style="margin:0">⚡ 限时秒杀</h2>
+          <div class="seckill-hero-sub" id="seckillHint">整点开抢 · 售完即止</div>
+        </div>
+        <div class="seckill-countdown" id="seckillCountdown">--:--:--</div>
+      </div>
+      <div id="seckillList" class="seckill-list"></div>
     </section>
 
     <!-- ============================ 订单 ============================ -->
@@ -110,6 +122,7 @@
 <!-- 底部标签栏 -->
 <nav class="tabbar" id="tabBar">
   <button data-tab="shop" class="active"><span class="ico">🛍️</span>选购</button>
+  <button data-tab="seckill"><span class="ico">⚡</span>秒杀</button>
   <button data-tab="orders"><span class="ico">📦</span>订单</button>
   <button data-tab="me"><span class="ico">👤</span>我的</button>
 </nav>
@@ -118,7 +131,7 @@
 <div id="drawerHost"></div>
 <div class="toast-host" id="toastHost"></div>
 
-<script src="assets/js/api.js?v=1.1"></script>
-<script src="assets/js/app.js?v=1.1"></script>
+<script src="assets/js/api.js?v=1.2"></script>
+<script src="assets/js/app.js?v=1.2"></script>
 </body>
 </html>

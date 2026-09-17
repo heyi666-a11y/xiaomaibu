@@ -9,7 +9,8 @@ const state = {
   keyword: '',
   unitChoice: {},   // product_id -> 'bottle' | 'box'
   tab: 'shop',
-  orders: []
+  orders: [],
+  seckills: []
 };
 
 /* ---------------------------------------------------------------- 初始化 */
@@ -20,16 +21,20 @@ async function boot() {
   switchTab('shop');
 
   try {
-    const [settings, products] = await Promise.all([
+    const [settings, products, seckills] = await Promise.all([
       yxlsRpc('yxls_public_settings'),
-      yxlsRpc('yxls_products', { p_category: null })
+      yxlsRpc('yxls_products', { p_category: null }),
+      yxlsRpc('yxls_seckill_list')
     ]);
     state.settings = settings || {};
     state.products = products || [];
+    state.seckills = seckills || [];
     window.__yxlsProducts = state.products;
     applySettings();
     renderCategories();
     renderProducts();
+    renderSeckill();
+    startSeckillTicker();
   } catch (err) {
     document.getElementById('productGrid').innerHTML =
       `<div class="empty" style="grid-column:1/-1">
@@ -144,6 +149,112 @@ document.addEventListener('click', e => {
   }
 });
 
+/* ---------------------------------------------------------------- 秒杀专区 */
+async function loadSeckills() {
+  try {
+    state.seckills = (await yxlsRpc('yxls_seckill_list')) || [];
+    renderSeckill();
+  } catch (err) { /* 静默：秒杀不可用不影响主流程 */ }
+}
+
+function renderSeckill() {
+  const list = state.seckills.filter(s => !s.sold_out);
+  const hero = document.getElementById('seckillCountdown');
+  if (!state.seckills.length) {
+    hero.textContent = '';
+    document.getElementById('seckillList').innerHTML =
+      `<div class="empty"><strong>暂无秒杀活动</strong>商家上架后这里会第一时间开抢</div>`;
+    return;
+  }
+  hero.textContent = earliestCountdown(state.seckills);
+
+  document.getElementById('seckillList').innerHTML = list.length
+    ? list.map(sk => {
+        const off = sk.origin_price > 0 && Number(sk.seckill_price) < Number(sk.origin_price)
+          ? Math.round((Number(sk.seckill_price) / Number(sk.origin_price)) * 100) / 10
+          : 0;
+        const pct = Math.min(100, Number(sk.sold_percent) || 0);
+        const unitName = sk.unit === 'box' ? '箱' : '瓶';
+        const showLeft = sk.left_show;
+        const stockOut = Number(sk.stock_bottles) <= 0;
+        return `
+        <article class="sk-card">
+          <img class="sk-img" src="${productImage(sk)}" alt="${escapeHtml(sk.name)}" loading="lazy" onerror="imgFallback(this)">
+          <div class="sk-main">
+            <div class="sk-title">
+              <span class="sk-badge">秒杀</span>
+              ${escapeHtml(sk.title || sk.name)}
+            </div>
+            <div class="muted small">${escapeHtml(sk.spec || '')} · ${unitName} · 限量 ${sk.stock_show} ${unitName}</div>
+            <div class="sk-price-row">
+              <span class="sk-price">${yuan(sk.seckill_price)}</span>
+              <span class="price-old">${yuan(sk.origin_price)}</span>
+              ${off > 0 ? `<span class="sk-off">${off}折</span>` : ''}
+              <span class="sk-end muted small" data-sk-end="${sk.end_at || ''}" style="margin-left:auto">
+                ${countdownText(sk.end_at).text}
+              </span>
+            </div>
+            <div class="sk-progress"><i style="width:${pct}%"></i></div>
+            <div class="sk-foot">
+              <span class="muted small">仅剩 <b style="color:var(--accent)">${showLeft}</b> ${unitName}</span>
+              <button class="btn btn-accent btn-sm" data-sk-add="${sk.id}" ${stockOut || showLeft <= 0 ? 'disabled' : ''}>
+                ${stockOut ? '商品缺货' : showLeft <= 0 ? '已抢完' : '马上抢'}
+              </button>
+            </div>
+          </div>
+        </article>`;
+      }).join('')
+    : `<div class="empty"><strong>本轮已抢完</strong>等下一波秒杀再来吧</div>`;
+}
+
+function earliestCountdown(sks) {
+  const ends = sks.map(s => s.end_at ? new Date(s.end_at).getTime() : Infinity);
+  if (!ends.length) return '--:--:--';
+  const min = Math.min(...ends);
+  if (min === Infinity) return '长期有效';
+  return '距结束 ' + countdownText(new Date(min).toISOString()).text;
+}
+
+/* 每秒刷新倒计时；整点结束后自动重拉列表 */
+function startSeckillTicker() {
+  if (startSeckillTicker._t) clearInterval(startSeckillTicker._t);
+  startSeckillTicker._t = setInterval(() => {
+    if (state.tab !== 'seckill') return;
+    const sks = state.seckills;
+    if (!sks.length) return;
+    document.getElementById('seckillCountdown').textContent = earliestCountdown(sks);
+    document.querySelectorAll('[data-sk-end]').forEach(el => {
+      el.textContent = countdownText(el.dataset.skEnd || null).text;
+    });
+    if (sks.some(s => s.end_at && new Date(s.end_at).getTime() <= Date.now())) loadSeckills();
+  }, 1000);
+}
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-sk-add]');
+  if (!btn) return;
+  const sk = state.seckills.find(s => String(s.id) === btn.dataset.skAdd);
+  if (!sk) return;
+  /* 同一秒杀活动在购物车里的数量不能超过剩余可抢名额 */
+  const inCart = Cart.read()
+    .filter(i => i.seckill_id === sk.id)
+    .reduce((s, i) => s + i.qty, 0);
+  if (inCart >= sk.seckill_left) { toast(`该秒杀每人限抢 ${sk.seckill_left} ${sk.unit === 'box' ? '箱' : '瓶'}`, 'err'); return; }
+
+  /* 合成商品对象：按活动单位把原价映射到对应字段，供购物车展示原价 */
+  const prod = {
+    id: sk.product_id,
+    barcode: sk.barcode,
+    name: sk.name,
+    spec: sk.spec,
+    bottle_count: sk.bottle_count,
+    bottle_price: sk.unit === 'bottle' ? sk.origin_price : Number(sk.origin_price) / sk.bottle_count,
+    box_price: sk.unit === 'box' ? sk.origin_price : Number(sk.origin_price) * sk.bottle_count
+  };
+  Cart.add(prod, sk.unit, 1, sk);
+  toast(`秒杀已加入：${sk.name}`, 'ok');
+});
+
 /* ---------------------------------------------------------------- 购物车 */
 function renderCart() {
   const n = Cart.count;
@@ -166,12 +277,17 @@ function openCart() {
     <div class="line-item">
       <img class="line-thumb" src="${productImage({ barcode: it.barcode, name: it.name })}" alt="" onerror="imgFallback(this)">
       <div class="line-main">
-        <div class="line-title">${escapeHtml(it.name)}</div>
-        <div class="line-sub">${escapeHtml(it.spec || '')} · ${unitText(it.unit)} · ${yuan(it.price)}</div>
+        <div class="line-title">
+          ${it.seckill_id ? '<span class="sk-badge">秒杀</span>' : ''}${escapeHtml(it.name)}
+        </div>
+        <div class="line-sub">${escapeHtml(it.spec || '')} · ${unitText(it.unit)} · ${yuan(it.price)}
+          ${it.seckill_id && it.origin_price > it.price ? `<span class="price-old">${yuan(it.origin_price)}</span>` : ''}
+        </div>
+        ${it.seckill_id ? '' : `
         <div class="unit-toggle" style="margin-top:7px">
           <button data-cart-unit="bottle" data-i="${i}" class="${it.unit === 'bottle' ? 'active' : ''}">单瓶</button>
           <button data-cart-unit="box" data-i="${i}" class="${it.unit === 'box' ? 'active' : ''}">整箱</button>
-        </div>
+        </div>`}
       </div>
       <div class="line-right">
         <div class="qty">
@@ -221,7 +337,7 @@ function openAuth(mode = 'login', after) {
       </div>
       <div class="field"><label>手机号</label><input class="input" id="authPhone" inputmode="numeric" maxlength="11" placeholder="11 位手机号" autocomplete="tel"></div>
       <div class="field"><label>密码</label><input class="input" id="authPwd" type="password" placeholder="至少 6 位" autocomplete="current-password"></div>
-      <div class="field only-register"><label>昵称 <span class="muted small">（选填）</span></label><input class="input" id="authNick" placeholder="直接写你的微信用户名" maxlength="20"></div>
+      <div class="field only-register"><label>昵称</label><input class="input" id="authNick" placeholder="直接写你的微信用户名" maxlength="20"></div>
       <div class="field only-register"><label>邀请码</label><input class="input" id="authInvite" placeholder="请输入商家提供的邀请码" style="text-transform:uppercase"></div>
       <p class="hint only-register">邀请码由商家提供；注册后可用手机号 + 密码登录。</p>`,
     foot: c
@@ -250,11 +366,12 @@ function openAuth(mode = 'login', after) {
           const btn = el.querySelector('#authSubmit');
           if (!/^1\d{10}$/.test(phone)) { toast('请输入正确的手机号', 'err'); return; }
           if (pwd.length < 6) { toast('密码至少 6 位', 'err'); return; }
+          if (mode === 'register' && !nick.trim()) { toast('请填写昵称', 'err'); return; }
           if (mode === 'register' && !invite.trim()) { toast('请填写邀请码', 'err'); return; }
           btn.disabled = true; btn.textContent = '处理中…';
           try {
             const r = mode === 'register'
-              ? await yxlsRpc('yxls_register', { p_phone: phone, p_password: pwd, p_invite: invite.trim(), p_nickname: nick.trim() || null })
+              ? await yxlsRpc('yxls_register', { p_phone: phone, p_password: pwd, p_invite: invite.trim(), p_nickname: nick.trim() })
               : await yxlsRpc('yxls_login', { p_phone: phone, p_password: pwd });
             if (!r || !r.ok) throw new Error((r && r.msg) || '操作失败');
             Session.save(r.token, r.customer);
@@ -306,7 +423,7 @@ function openCheckout() {
       <div class="card pad" style="box-shadow:none;background:var(--surface-2);margin-bottom:14px">
         ${items.map(it => `
           <div class="order-item-row">
-            <span>${escapeHtml(it.name)} <span class="muted">· ${unitText(it.unit)} × ${it.qty}</span></span>
+            <span>${escapeHtml(it.name)} <span class="muted">· ${unitText(it.unit)} × ${it.qty}${it.seckill_id ? ' · 秒杀' : ''}</span></span>
             <strong>${yuan(it.qty * it.price)}</strong>
           </div>`).join('')}
         <div class="order-item-row" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">
@@ -333,7 +450,12 @@ function openCheckout() {
 
         btn.disabled = true; btn.textContent = '提交中…';
         try {
-          const payload = items.map(i => ({ product_id: i.product_id, unit: i.unit, qty: i.qty }));
+          const payload = items.map(i => ({
+            product_id: i.product_id,
+            unit: i.unit,
+            qty: i.qty,
+            seckill_id: i.seckill_id || null
+          }));
           const r = await yxlsRpc('yxls_order_create', {
             p_token: Session.token,
             p_items: payload,
@@ -570,9 +692,11 @@ document.getElementById('btnLogout').onclick = () => {
 function switchTab(name) {
   state.tab = name;
   document.getElementById('viewShop').classList.toggle('hidden', name !== 'shop');
+  document.getElementById('viewSeckill').classList.toggle('hidden', name !== 'seckill');
   document.getElementById('viewOrders').classList.toggle('hidden', name !== 'orders');
   document.getElementById('viewMe').classList.toggle('hidden', name !== 'me');
   document.querySelectorAll('#tabBar button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  if (name === 'seckill') { renderSeckill(); loadSeckills(); }
   if (name === 'orders') refreshOrders();
   if (name === 'me') renderMe();
   window.scrollTo(0, 0);
