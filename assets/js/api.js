@@ -272,7 +272,7 @@ const YXLS_LOCAL_IMG = new Set([
 function productImage(p) {
   if (p && p.image_url) return p.image_url;
   if (p && p.barcode && YXLS_LOCAL_IMG.has(p.barcode)) {
-    return 'assets/img/' + p.barcode + '.jpg';
+    return 'assets/img/' + p.barcode + '.jpg?v=1.6';
   }
   const prompt = (p && YXLS_IMAGE_PROMPTS[p.barcode])
     || `commercial product photo of bottled beverage ${p ? p.name : ''}, clean white background, studio lighting, centered`;
