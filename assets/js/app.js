@@ -98,10 +98,12 @@ function renderProducts() {
 
   grid.innerHTML = list.map(p => {
     const unit = state.unitChoice[p.id] || 'bottle';
+    const svc = p.category === '便民服务';   // 到店服务类，按“项”计量，不分单瓶/整箱
+    const uni = svc ? '项' : '瓶';
     const price = unit === 'box' ? p.box_price : p.bottle_price;
-    const boxSave = Number(p.box_price) > 0 && Number(p.bottle_price) * p.bottle_count > Number(p.box_price);
+    const boxSave = !svc && Number(p.box_price) > 0 && Number(p.bottle_price) * p.bottle_count > Number(p.box_price);
     const out = Number(p.stock_bottles) <= 0;
-    const few = !out && Number(p.stock_bottles) < p.bottle_count;
+    const few = !out && !svc && Number(p.stock_bottles) < p.bottle_count;
 
     return `
     <article class="product">
@@ -111,20 +113,22 @@ function renderProducts() {
       </div>
       <div class="product-body">
         <div class="product-name">${escapeHtml(p.name)}</div>
-        <div class="product-meta">${escapeHtml(p.spec || '')} · ${p.bottle_count} 瓶/箱</div>
+        <div class="product-meta">${svc
+          ? escapeHtml(p.spec || '到店服务')
+          : `${escapeHtml(p.spec || '')} · ${p.bottle_count} 瓶/箱`}</div>
         <div class="price-row">
           <span class="price">${yuan(price)}</span>
-          <span class="price-unit">/ ${unit === 'box' ? '箱' : '瓶'}</span>
+          <span class="price-unit">/ ${svc ? '项' : (unit === 'box' ? '箱' : '瓶')}</span>
           ${boxSave ? `<span class="price-old">${yuan(unit === 'box' ? p.bottle_price * p.bottle_count : 0)}</span>` : ''}
         </div>
         ${out
           ? `<div class="stock-out">暂时缺货</div>`
-          : `<div class="product-meta">库存 ${p.stock_bottles} 瓶${few ? '（不足一箱）' : ''}</div>`}
+          : `<div class="product-meta">库存 ${p.stock_bottles} ${uni}${few ? '（不足一箱）' : ''}</div>`}
         <div class="product-actions">
-          <div class="unit-toggle">
+          ${svc ? '' : `<div class="unit-toggle">
             <button data-unit="bottle" data-id="${p.id}" class="${unit === 'bottle' ? 'active' : ''}">单瓶</button>
             <button data-unit="box" data-id="${p.id}" class="${unit === 'box' ? 'active' : ''}">整箱</button>
-          </div>
+          </div>`}
           <button class="btn btn-primary btn-sm" data-add="${p.id}" ${out ? 'disabled' : ''} style="margin-left:auto">加入</button>
         </div>
       </div>
