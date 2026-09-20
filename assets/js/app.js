@@ -99,7 +99,7 @@ function renderProducts() {
   grid.innerHTML = list.map(p => {
     const unit = state.unitChoice[p.id] || 'bottle';
     const svc = p.category === '便民服务';   // 到店服务类，按“项”计量，不分单瓶/整箱
-    const uni = svc ? '项' : '瓶';
+    const uni = svc ? '项' : bottleWord(p.category);
     const price = unit === 'box' ? p.box_price : p.bottle_price;
     const boxSave = !svc && Number(p.box_price) > 0 && Number(p.bottle_price) * p.bottle_count > Number(p.box_price);
     const out = Number(p.stock_bottles) <= 0;
@@ -115,10 +115,10 @@ function renderProducts() {
         <div class="product-name">${escapeHtml(p.name)}</div>
         <div class="product-meta">${svc
           ? escapeHtml(p.spec || '到店服务')
-          : `${escapeHtml(p.spec || '')} · ${p.bottle_count} 瓶/箱`}</div>
+          : `${escapeHtml(p.spec || '')} · ${p.bottle_count} ${bottleWord(p.category)}/箱`}</div>
         <div class="price-row">
           <span class="price">${yuan(price)}</span>
-          <span class="price-unit">/ ${svc ? '项' : (unit === 'box' ? '箱' : '瓶')}</span>
+          <span class="price-unit">/ ${svc ? '项' : (unit === 'box' ? '箱' : bottleWord(p.category))}</span>
           ${boxSave ? `<span class="price-old">${yuan(unit === 'box' ? p.bottle_price * p.bottle_count : 0)}</span>` : ''}
         </div>
         ${out
@@ -126,7 +126,7 @@ function renderProducts() {
           : `<div class="product-meta">库存 ${p.stock_bottles} ${uni}${few ? '（不足一箱）' : ''}</div>`}
         <div class="product-actions">
           ${svc ? '' : `<div class="unit-toggle">
-            <button data-unit="bottle" data-id="${p.id}" class="${unit === 'bottle' ? 'active' : ''}">单瓶</button>
+            <button data-unit="bottle" data-id="${p.id}" class="${unit === 'bottle' ? 'active' : ''}">${unitText('bottle', p.category)}</button>
             <button data-unit="box" data-id="${p.id}" class="${unit === 'box' ? 'active' : ''}">整箱</button>
           </div>`}
           <button class="btn btn-primary btn-sm" data-add="${p.id}" ${out ? 'disabled' : ''} style="margin-left:auto">加入</button>
@@ -149,7 +149,7 @@ document.addEventListener('click', e => {
     if (!p) return;
     const unit = state.unitChoice[p.id] || 'bottle';
     Cart.add(p, unit, 1);
-    toast(`已加入：${p.name}（${unitText(unit)}）`, 'ok');
+    toast(`已加入：${p.name}（${unitText(unit, p.category)}）`, 'ok');
   }
 });
 
@@ -179,7 +179,7 @@ function renderSeckill() {
           ? Math.round((Number(sk.seckill_price) / Number(sk.origin_price)) * 100) / 10
           : 0;
         const pct = Math.min(100, Number(sk.sold_percent) || 0);
-        const unitName = sk.unit === 'box' ? '箱' : '瓶';
+        const unitName = sk.unit === 'box' ? '箱' : bottleWord(sk.category || catOfProduct(sk.product_id));
         const showLeft = sk.left_show;
         const stockOut = Number(sk.stock_bottles) <= 0;
         return `
@@ -279,7 +279,7 @@ document.addEventListener('click', e => {
   const inCart = Cart.read()
     .filter(i => i.seckill_id === sk.id)
     .reduce((s, i) => s + i.qty, 0);
-  if (inCart >= sk.seckill_left) { toast(`该秒杀每人限抢 ${sk.seckill_left} ${sk.unit === 'box' ? '箱' : '瓶'}`, 'err'); return; }
+  if (inCart >= sk.seckill_left) { toast(`该秒杀每人限抢 ${sk.seckill_left} ${sk.unit === 'box' ? '箱' : bottleWord(sk.category || catOfProduct(sk.product_id))}`, 'err'); return; }
 
   /* 合成商品对象：按活动单位把原价映射到对应字段，供购物车展示原价 */
   const prod = {
@@ -320,12 +320,12 @@ function openCart() {
         <div class="line-title">
           ${it.seckill_id ? '<span class="sk-badge">秒杀</span>' : ''}${escapeHtml(it.name)}
         </div>
-        <div class="line-sub">${escapeHtml(it.spec || '')} · ${unitText(it.unit)} · ${yuan(it.price)}
+        <div class="line-sub">${escapeHtml(it.spec || '')} · ${unitText(it.unit, it.category)} · ${yuan(it.price)}
           ${it.seckill_id && it.origin_price > it.price ? `<span class="price-old">${yuan(it.origin_price)}</span>` : ''}
         </div>
         ${it.seckill_id ? '' : `
         <div class="unit-toggle" style="margin-top:7px">
-          <button data-cart-unit="bottle" data-i="${i}" class="${it.unit === 'bottle' ? 'active' : ''}">单瓶</button>
+          <button data-cart-unit="bottle" data-i="${i}" class="${it.unit === 'bottle' ? 'active' : ''}">${unitText('bottle', it.category)}</button>
           <button data-cart-unit="box" data-i="${i}" class="${it.unit === 'box' ? 'active' : ''}">整箱</button>
         </div>`}
       </div>
@@ -463,7 +463,7 @@ function openCheckout() {
       <div class="card pad" style="box-shadow:none;background:var(--surface-2);margin-bottom:14px">
         ${items.map(it => `
           <div class="order-item-row">
-            <span>${escapeHtml(it.name)} <span class="muted">· ${unitText(it.unit)} × ${it.qty}${it.seckill_id ? ' · 秒杀' : ''}</span></span>
+            <span>${escapeHtml(it.name)} <span class="muted">· ${unitText(it.unit, it.category)} × ${it.qty}${it.seckill_id ? ' · 秒杀' : ''}</span></span>
             <strong>${yuan(it.qty * it.price)}</strong>
           </div>`).join('')}
         <div class="order-item-row" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--line)">
@@ -571,7 +571,7 @@ function renderOrders() {
       <div class="order-items">
         ${(o.items || []).map(it => `
           <div class="order-item-row">
-            <span>${escapeHtml(it.product_name)} <span class="muted">· ${unitText(it.unit)} × ${it.qty}</span></span>
+            <span>${escapeHtml(it.product_name)} <span class="muted">· ${unitText(it.unit, (state.products.find(x => x.name === it.product_name) || {}).category)} × ${it.qty}</span></span>
             <span>${yuan(it.subtotal)}</span>
           </div>`).join('')}
       </div>

@@ -79,6 +79,7 @@ const Cart = {
         barcode: product.barcode || '',
         name: product.name,
         spec: product.spec,
+        category: product.category || catOfProduct(product.id),
         unit,
         qty,
         price: sid
@@ -162,7 +163,15 @@ const ORDER_STATUS = {
 };
 const statusInfo = s => ORDER_STATUS[s] || { text: s || '-', cls: '' };
 
-function unitText(u) { return u === 'box' ? '整箱' : '单瓶'; }
+/* 单位文案：零食类按「包」计量，其余按「瓶」；便民服务在前端单独按「项」处理 */
+function unitText(u, cat) { return u === 'box' ? '整箱' : (cat === '零食' ? '单包' : '单瓶'); }
+const bottleWord = cat => cat === '零食' ? '包' : '瓶';
+function catOfProduct(pid) {
+  return (((window.__yxlsProducts || []).find(x => Number(x.id) === Number(pid)) || {}).category) || '';
+}
+window.unitText = unitText;
+window.bottleWord = bottleWord;
+window.catOfProduct = catOfProduct;
 
 /* --------------------------------------------------------------- 提示条 */
 function toast(msg, type = '') {
@@ -272,7 +281,7 @@ const YXLS_LOCAL_IMG = new Set([
 function productImage(p) {
   if (p && p.image_url) return p.image_url;
   if (p && p.barcode && YXLS_LOCAL_IMG.has(p.barcode)) {
-    return 'assets/img/' + p.barcode + '.jpg?v=1.6';
+    return 'assets/img/' + p.barcode + '.jpg?v=1.7';
   }
   const prompt = (p && YXLS_IMAGE_PROMPTS[p.barcode])
     || `commercial product photo of bottled beverage ${p ? p.name : ''}, clean white background, studio lighting, centered`;
@@ -297,7 +306,6 @@ window.escapeHtml = escapeHtml;
 window.fmtTime = fmtTime;
 window.countdownText = countdownText;
 window.statusInfo = statusInfo;
-window.unitText = unitText;
 window.toast = toast;
 window.productImage = productImage;
 window.imgFallback = imgFallback;

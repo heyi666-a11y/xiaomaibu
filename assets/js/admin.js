@@ -24,6 +24,9 @@ const A = {
   seckills: []
 };
 
+/* 按商品 id 取类目（零食的单位显示为「包」） */
+const catById = pid => (A.products.find(x => Number(x.id) === Number(pid)) || {}).category;
+
 /* 统一调用：自动带上管理员 token，并处理登录失效 */
 async function adminRpc(fn, args = {}) {
   const r = await yxlsRpc(fn, { p_token: Admin.token(), ...args });
@@ -217,11 +220,14 @@ function paintOrders() {
         <span class="muted small" style="margin-left:auto">${fmtTime(o.created_at)}</span>
       </div>
       <div class="order-items">
-        ${(o.items || []).map(it => `
+        ${(o.items || []).map(it => {
+          const cat = (A.products.find(x => x.name === it.product_name) || {}).category;
+          return `
           <div class="order-item-row">
-            <span>${escapeHtml(it.product_name)} <span class="muted">· ${unitText(it.unit)} × ${it.qty}（${it.bottles} 瓶）</span></span>
+            <span>${escapeHtml(it.product_name)} <span class="muted">· ${unitText(it.unit, cat)} × ${it.qty}（${it.bottles} ${bottleWord(cat)}）</span></span>
             <span>${yuan(it.subtotal)}</span>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>
       <p class="hint" style="margin-top:8px">
         ${escapeHtml(o.contact || '')}　${escapeHtml(o.phone || '')}<br>
@@ -269,8 +275,8 @@ async function viewProducts(body) {
       <table class="data">
         <thead><tr>
           <th>商品</th><th>分类</th><th>规格</th>
-          <th class="num">单瓶价</th><th class="num">整箱价</th><th class="num">成本</th>
-          <th class="num">库存(瓶)</th><th>状态</th><th>操作</th>
+          <th class="num">单件价</th><th class="num">整箱价</th><th class="num">成本</th>
+          <th class="num">库存(件)</th><th>状态</th><th>操作</th>
         </tr></thead>
         <tbody>
           ${list.map(p => `
@@ -322,7 +328,7 @@ function productForm(p) {
       <div class="field" style="max-width:110px"><label>每箱瓶数</label><input class="input" id="fCount" type="number" min="1" value="${p.bottle_count || 1}"></div>
     </div>
     <div class="field-row">
-      <div class="field"><label>单瓶售价</label><input class="input" id="fBottle" type="number" step="0.01" value="${p.bottle_price ?? ''}"></div>
+      <div class="field"><label>单件售价（瓶/包）</label><input class="input" id="fBottle" type="number" step="0.01" value="${p.bottle_price ?? ''}"></div>
       <div class="field"><label>整箱售价</label><input class="input" id="fBox" type="number" step="0.01" value="${p.box_price ?? ''}"></div>
       <div class="field"><label>成本价/瓶</label><input class="input" id="fCost" type="number" step="0.01" value="${p.cost_price ?? ''}"></div>
     </div>
@@ -337,7 +343,7 @@ function productForm(p) {
         <option value="false" ${p.is_active === false ? 'selected' : ''}>下架</option>
       </select>
     </div>
-    <p class="hint">提示：修改「每箱瓶数 / 单瓶售价」后，可点下方按钮自动换算整箱价。</p>`;
+    <p class="hint">提示：修改「每箱件数 / 单件售价」后，可点下方按钮自动换算整箱价。</p>`;
 }
 
 function bindProductForm(el, close, editing) {
@@ -459,7 +465,7 @@ async function viewSeckills(body) {
                   <img class="thumb-sm" src="${productImage(k)}" onerror="imgFallback(this)" alt="">
                   <div style="min-width:0">
                     <div style="font-weight:550">${escapeHtml(k.name)}</div>
-                    <div class="muted small">${escapeHtml(k.spec || '')} · 原${k.unit === 'box' ? '箱' : '瓶'}价 ${yuan(k.origin_price)}${k.product_active ? '' : ' · <b style="color:var(--danger)">已下架</b>'}</div>
+                    <div class="muted small">${escapeHtml(k.spec || '')} · 原${k.unit === 'box' ? '箱' : bottleWord(k.category || catById(k.product_id))}价 ${yuan(k.origin_price)}${k.product_active ? '' : ' · <b style="color:var(--danger)">已下架</b>'}</div>
                   </div>
                 </div>
               </td>
@@ -488,7 +494,7 @@ function seckillForm(k) {
       <select class="select" id="sProduct">
         <option value="">请选择商品</option>
         ${A.products.filter(p => p.is_active).map(p =>
-          `<option value="${p.id}" ${k.product_id === p.id ? 'selected' : ''}>${escapeHtml(p.name)}（${escapeHtml(p.spec || '')} · ${p.bottle_count}瓶/箱 · 库存 ${p.stock_bottles} 瓶）</option>`
+          `<option value="${p.id}" ${k.product_id === p.id ? 'selected' : ''}>${escapeHtml(p.name)}（${escapeHtml(p.spec || '')} · ${p.bottle_count}${bottleWord(p.category)}/箱 · 库存 ${p.stock_bottles} ${bottleWord(p.category)}）</option>`
         ).join('')}
         ${A.products.filter(p => !p.is_active && k.product_id === p.id).map(p =>
           `<option value="${p.id}" selected>${escapeHtml(p.name)}（已下架商品，当前活动）</option>`
@@ -500,7 +506,7 @@ function seckillForm(k) {
     <div class="field-row">
       <div class="field"><label>秒杀单位</label>
         <select class="select" id="sUnit">
-          <option value="bottle" ${k.unit !== 'box' ? 'selected' : ''}>单瓶</option>
+          <option value="bottle" ${k.unit !== 'box' ? 'selected' : ''}>按件（瓶/包）</option>
           <option value="box" ${k.unit === 'box' ? 'selected' : ''}>整箱</option>
         </select></div>
       <div class="field"><label>秒杀价（元）*</label>
