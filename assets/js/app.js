@@ -287,6 +287,7 @@ document.addEventListener('click', e => {
     barcode: sk.barcode,
     name: sk.name,
     spec: sk.spec,
+    category: sk.category,
     bottle_count: sk.bottle_count,
     bottle_price: sk.unit === 'bottle' ? sk.origin_price : Number(sk.origin_price) / sk.bottle_count,
     box_price: sk.unit === 'box' ? sk.origin_price : Number(sk.origin_price) * sk.bottle_count
